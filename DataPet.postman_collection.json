@@ -1,0 +1,124 @@
+{
+  "info": {
+    "name": "DataPet API",
+    "description": "Peticiones de prueba para la API REST veterinaria DataPet.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "id", "value": "1" },
+    { "key": "clienteId", "value": "" },
+    { "key": "mascotaId", "value": "" },
+    { "key": "veterinarioId", "value": "" },
+    { "key": "citaId", "value": "" },
+    { "key": "historiaId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Flujo CRUD completo",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('Estado HTTP esperado', function () {",
+            "  const requestName = pm.info.requestName;",
+            "  const expectedStatus = requestName === 'Validar rechazo de datos incorrectos' ? 400 : requestName.startsWith('Crear ') ? 201 : 200;",
+            "  pm.response.to.have.status(expectedStatus);",
+            "});",
+            "pm.test('Contrato uniforme DataPet', function () {",
+            "  const body = pm.response.json();",
+            "  pm.expect(body).to.have.all.keys('status', 'mensaje', 'data', 'error', 'code');",
+            "  pm.expect(body.code).to.eql(pm.response.code);",
+            "});"
+          ]
+        }
+      }],
+      "item": [
+        { "name": "Comprobar API y base de datos", "request": { "method": "GET", "url": "{{baseUrl}}/health" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().data.database).to.eql('connected');"] } }] },
+        { "name": "Probar CORS autorizado", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "http://localhost:5173" }], "url": "{{baseUrl}}/" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.headers.get('Access-Control-Allow-Origin')).to.eql('http://localhost:5173');"] } }] },
+        { "name": "Probar CORS no autorizado", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "https://unautorizado.example" }], "url": "{{baseUrl}}/" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.headers.get('Access-Control-Allow-Origin')).not.eql('https://unautorizado.example');"] } }] },
+        { "name": "Validar rechazo de datos incorrectos", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/v1/mascotas" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(400);", "pm.expect(pm.response.json().status).to.eql('error');"] } }] },
+        { "name": "Crear cliente", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Valentina Pérez\",\n  \"identificacion\": \"CC-{{$timestamp}}\",\n  \"telefono\": \"3001234567\",\n  \"correo\": \"cliente-{{$timestamp}}@example.com\",\n  \"direccion\": \"Bogotá\"\n}" }, "url": "{{baseUrl}}/api/v1/clientes" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('clienteId', pm.response.json().data.id);"] } }] },
+        { "name": "Crear veterinario", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Camila Torres\",\n  \"registroProfesional\": \"MV-{{$timestamp}}\",\n  \"especialidad\": \"Medicina general\",\n  \"telefono\": \"3101234567\",\n  \"correo\": \"vet-{{$timestamp}}@example.com\"\n}" }, "url": "{{baseUrl}}/api/v1/veterinarios" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('veterinarioId', pm.response.json().data.id);"] } }] },
+        { "name": "Crear mascota", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Luna\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Labrador\",\n  \"fechaNacimiento\": \"2022-05-10\",\n  \"sexo\": \"HEMBRA\",\n  \"clienteId\": {{clienteId}}\n}" }, "url": "{{baseUrl}}/api/v1/mascotas" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('mascotaId', pm.response.json().data.id);"] } }] },
+        { "name": "Crear cita", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fechaHora\": \"2026-11-01T14:00:00.000Z\",\n  \"motivo\": \"Control general\",\n  \"estado\": \"PROGRAMADA\",\n  \"mascotaId\": {{mascotaId}},\n  \"veterinarioId\": {{veterinarioId}}\n}" }, "url": "{{baseUrl}}/api/v1/citas" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('citaId', pm.response.json().data.id);"] } }] },
+        { "name": "Crear historia clínica", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"2026-11-01\",\n  \"diagnostico\": \"Buen estado general\",\n  \"tratamiento\": \"Control preventivo\",\n  \"observaciones\": \"Sin novedades\",\n  \"mascotaId\": {{mascotaId}},\n  \"veterinarioId\": {{veterinarioId}},\n  \"citaId\": {{citaId}}\n}" }, "url": "{{baseUrl}}/api/v1/historias-clinicas" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('historiaId', pm.response.json().data.id);"] } }] },
+        { "name": "Consultar cliente", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/clientes/{{clienteId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Consultar veterinario", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/veterinarios/{{veterinarioId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Consultar mascota", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/mascotas/{{mascotaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Consultar cita", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/citas/{{citaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Consultar historia clínica", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/historias-clinicas/{{historiaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Listar clientes", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/clientes" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Listar veterinarios", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/veterinarios" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Listar mascotas", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/mascotas" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Listar citas", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/citas" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Listar historias clínicas", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/historias-clinicas" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Actualizar cliente", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Valentina Pérez Actualizada\",\n  \"identificacion\": \"CC-{{$timestamp}}\",\n  \"telefono\": \"3001234567\",\n  \"correo\": \"cliente-{{$timestamp}}@example.com\",\n  \"direccion\": \"Bogotá\"\n}" }, "url": "{{baseUrl}}/api/v1/clientes/{{clienteId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Actualizar veterinario", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Camila Torres Actualizada\",\n  \"registroProfesional\": \"MV-{{$timestamp}}\",\n  \"especialidad\": \"Medicina general\",\n  \"telefono\": \"3101234567\",\n  \"correo\": \"vet-{{$timestamp}}@example.com\"\n}" }, "url": "{{baseUrl}}/api/v1/veterinarios/{{veterinarioId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Actualizar mascota", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Luna Actualizada\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Labrador\",\n  \"fechaNacimiento\": \"2022-05-10\",\n  \"sexo\": \"HEMBRA\",\n  \"clienteId\": {{clienteId}}\n}" }, "url": "{{baseUrl}}/api/v1/mascotas/{{mascotaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Actualizar cita", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fechaHora\": \"2026-11-01T14:00:00.000Z\",\n  \"motivo\": \"Control general actualizado\",\n  \"estado\": \"CONFIRMADA\",\n  \"mascotaId\": {{mascotaId}},\n  \"veterinarioId\": {{veterinarioId}}\n}" }, "url": "{{baseUrl}}/api/v1/citas/{{citaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Actualizar historia clínica", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"2026-11-01\",\n  \"diagnostico\": \"Buen estado general\",\n  \"tratamiento\": \"Control preventivo\",\n  \"observaciones\": \"Seguimiento actualizado\",\n  \"mascotaId\": {{mascotaId}},\n  \"veterinarioId\": {{veterinarioId}},\n  \"citaId\": {{citaId}}\n}" }, "url": "{{baseUrl}}/api/v1/historias-clinicas/{{historiaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Eliminar historia clínica", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/historias-clinicas/{{historiaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Eliminar cita", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/citas/{{citaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Eliminar mascota", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/mascotas/{{mascotaId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Eliminar veterinario", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/veterinarios/{{veterinarioId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] },
+        { "name": "Eliminar cliente", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/clientes/{{clienteId}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] } }] }
+      ]
+    },
+    {
+      "name": "Estado API",
+      "request": { "method": "GET", "url": "{{baseUrl}}/" }
+    },
+    {
+      "name": "Clientes",
+      "item": [
+        { "name": "Listar clientes", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/clientes" } },
+        { "name": "Consultar cliente", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/clientes/{{id}}" } },
+        { "name": "Crear cliente", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Valentina Pérez\",\n  \"identificacion\": \"CC-100200300\",\n  \"telefono\": \"3001234567\",\n  \"correo\": \"valentina@example.com\",\n  \"direccion\": \"Bogotá\"\n}" }, "url": "{{baseUrl}}/api/v1/clientes" } },
+        { "name": "Actualizar cliente", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Valentina Pérez\",\n  \"identificacion\": \"CC-100200300\",\n  \"telefono\": \"3001234567\",\n  \"correo\": \"valentina@example.com\",\n  \"direccion\": \"Bogotá\"\n}" }, "url": "{{baseUrl}}/api/v1/clientes/{{id}}" } },
+        { "name": "Eliminar cliente", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/clientes/{{id}}" } }
+      ]
+    },
+    {
+      "name": "Mascotas",
+      "item": [
+        { "name": "Listar mascotas", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/mascotas" } },
+        { "name": "Consultar mascota", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/mascotas/{{id}}" } },
+        { "name": "Crear mascota", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Luna\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Labrador\",\n  \"fechaNacimiento\": \"2022-05-10\",\n  \"sexo\": \"HEMBRA\",\n  \"clienteId\": 1\n}" }, "url": "{{baseUrl}}/api/v1/mascotas" } },
+        { "name": "Actualizar mascota", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Luna\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Labrador\",\n  \"fechaNacimiento\": \"2022-05-10\",\n  \"sexo\": \"HEMBRA\",\n  \"clienteId\": 1\n}" }, "url": "{{baseUrl}}/api/v1/mascotas/{{id}}" } },
+        { "name": "Eliminar mascota", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/mascotas/{{id}}" } }
+      ]
+    },
+    {
+      "name": "Veterinarios",
+      "item": [
+        { "name": "Listar veterinarios", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/veterinarios" } },
+        { "name": "Consultar veterinario", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/veterinarios/{{id}}" } },
+        { "name": "Crear veterinario", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Camila Torres\",\n  \"registroProfesional\": \"MV-12345\",\n  \"especialidad\": \"Medicina general\",\n  \"telefono\": \"3101234567\",\n  \"correo\": \"camila@example.com\"\n}" }, "url": "{{baseUrl}}/api/v1/veterinarios" } },
+        { "name": "Actualizar veterinario", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Camila Torres\",\n  \"registroProfesional\": \"MV-12345\",\n  \"especialidad\": \"Medicina general\",\n  \"telefono\": \"3101234567\",\n  \"correo\": \"camila@example.com\"\n}" }, "url": "{{baseUrl}}/api/v1/veterinarios/{{id}}" } },
+        { "name": "Eliminar veterinario", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/veterinarios/{{id}}" } }
+      ]
+    },
+    {
+      "name": "Citas",
+      "item": [
+        { "name": "Listar citas", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/citas" } },
+        { "name": "Consultar cita", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/citas/{{id}}" } },
+        { "name": "Crear cita", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fechaHora\": \"2026-11-01T14:00:00.000Z\",\n  \"motivo\": \"Control general\",\n  \"estado\": \"PROGRAMADA\",\n  \"mascotaId\": 1,\n  \"veterinarioId\": 1\n}" }, "url": "{{baseUrl}}/api/v1/citas" } },
+        { "name": "Actualizar cita", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fechaHora\": \"2026-11-01T14:00:00.000Z\",\n  \"motivo\": \"Control general\",\n  \"estado\": \"CONFIRMADA\",\n  \"mascotaId\": 1,\n  \"veterinarioId\": 1\n}" }, "url": "{{baseUrl}}/api/v1/citas/{{id}}" } },
+        { "name": "Eliminar cita", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/citas/{{id}}" } }
+      ]
+    },
+    {
+      "name": "Historias clínicas",
+      "item": [
+        { "name": "Listar historias clínicas", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/historias-clinicas" } },
+        { "name": "Consultar historia", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/historias-clinicas/{{id}}" } },
+        { "name": "Crear historia clínica", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"2026-11-01\",\n  \"diagnostico\": \"Buen estado general\",\n  \"tratamiento\": \"Desparasitación preventiva\",\n  \"observaciones\": \"Control anual\",\n  \"mascotaId\": 1,\n  \"veterinarioId\": 1,\n  \"citaId\": 1\n}" }, "url": "{{baseUrl}}/api/v1/historias-clinicas" } },
+        { "name": "Actualizar historia clínica", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"2026-11-01\",\n  \"diagnostico\": \"Buen estado general\",\n  \"tratamiento\": \"Desparasitación preventiva\",\n  \"observaciones\": \"Control anual\",\n  \"mascotaId\": 1,\n  \"veterinarioId\": 1,\n  \"citaId\": 1\n}" }, "url": "{{baseUrl}}/api/v1/historias-clinicas/{{id}}" } },
+        { "name": "Eliminar historia clínica", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/historias-clinicas/{{id}}" } }
+      ]
+    }
+  ]
+}
